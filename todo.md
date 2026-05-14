@@ -35,9 +35,18 @@ Guia rapido de handoff para o agent com o status real do projeto (feito e penden
 
 ## Checklist handoff
 - [x] Rodar `go test ./...`
-- [ ] Rodar `docker-compose up -d` e validar `/docs`, `/health`, `/ready` e `/suites`
-- [ ] Executar fluxo minimo: criar suite -> criar step -> run dual -> consultar diffs
-- [ ] Atualizar `specs/planejamento-status.md` apos cada entrega
+- [x] Rodar `docker-compose up -d` e validar `/docs`, `/health`, `/ready` e `/suites`
+- [x] Executar fluxo minimo: criar suite -> criar step -> run dual -> consultar diffs
+- [x] Atualizar `specs/planejamento-status.md` apos cada entrega
+
+## Bugs corrigidos (branch chore/infra)
+- `diff_json` retornava `null` em vez de `[]` quando nao havia diferencas (slice nil no marshal)
+- `POST /runs/dual` e `POST /runs/single/start` retornavam status desatualizado na resposta (`RUNNING` em vez de `COMPLETED`/`WAITING_USER`)
+
+## Workflow de branches
+- Nunca commitar diretamente na `main`
+- Usar branches por funcionalidade/tipo: `feat/`, `fix/`, `chore/`
+- PRs para merge na `main`
 
 ## Arquivos importantes
 - `cmd/api/main.go`

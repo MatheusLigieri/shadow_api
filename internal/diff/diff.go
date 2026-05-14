@@ -28,7 +28,7 @@ func CompareBodies(before string, after string, ignorePaths []string) Result {
 	if aErr == nil && bErr == nil {
 		applyIgnorePaths(a, ignorePaths)
 		applyIgnorePaths(b, ignorePaths)
-		var changes []Change
+		changes := make([]Change, 0)
 		diffJSON(a, b, "$", &changes)
 		passed := len(changes) == 0
 		payload, _ := json.Marshal(changes)

@@ -190,6 +190,7 @@ func (h *Handler) handleRunDual(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.repo.UpdateRunStatus(r.Context(), run.ID, "COMPLETED")
+	run.Status = "COMPLETED"
 	writeJSON(w, http.StatusCreated, run)
 }
 
@@ -249,6 +250,7 @@ func (h *Handler) handleRunSingleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.repo.UpdateRunStatus(r.Context(), run.ID, "WAITING_USER")
+	run.Status = "WAITING_USER"
 	writeJSON(w, http.StatusCreated, run)
 }
 
@@ -338,6 +340,7 @@ func (h *Handler) continueRun(w http.ResponseWriter, r *http.Request, runID stri
 		return
 	}
 	_ = h.repo.UpdateRunStatus(r.Context(), run.ID, "COMPLETED")
+	run.Status = "COMPLETED"
 	writeJSON(w, http.StatusOK, run)
 }
 
