@@ -108,6 +108,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Suite'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /suites/{id}:
     get:
@@ -323,6 +329,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '404':
+          description: Suite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /runs/{id}/continue:
     post:
@@ -346,6 +358,12 @@ paths:
                 $ref: '#/components/schemas/Run'
         '400':
           description: Run not in WAITING_USER state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Run not found
           content:
             application/json:
               schema:
@@ -399,6 +417,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Diff'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
   schemas:

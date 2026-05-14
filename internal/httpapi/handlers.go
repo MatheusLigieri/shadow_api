@@ -76,7 +76,7 @@ func (h *Handler) handleSuites(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleSuitesByID(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/suites/")
 	if path == "" {
-		w.WriteHeader(http.StatusNotFound)
+		writeError(w, http.StatusNotFound, errors.New("not found"))
 		return
 	}
 
@@ -98,7 +98,7 @@ func (h *Handler) handleSuitesByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.Contains(path, "/") {
-		w.WriteHeader(http.StatusNotFound)
+		writeError(w, http.StatusNotFound, errors.New("not found"))
 		return
 	}
 
@@ -113,7 +113,7 @@ func (h *Handler) handleSuitesByID(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleStepsByID(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/steps/")
 	if id == "" || strings.Contains(id, "/") {
-		w.WriteHeader(http.StatusNotFound)
+		writeError(w, http.StatusNotFound, errors.New("not found"))
 		return
 	}
 
@@ -255,7 +255,7 @@ func (h *Handler) handleRunSingleStart(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleRuns(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/runs/")
 	if path == "" {
-		w.WriteHeader(http.StatusNotFound)
+		writeError(w, http.StatusNotFound, errors.New("not found"))
 		return
 	}
 
@@ -280,7 +280,7 @@ func (h *Handler) handleRuns(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.Contains(path, "/") {
-		w.WriteHeader(http.StatusNotFound)
+		writeError(w, http.StatusNotFound, errors.New("not found"))
 		return
 	}
 
@@ -316,6 +316,10 @@ func (h *Handler) listDiffs(w http.ResponseWriter, r *http.Request, runID string
 func (h *Handler) continueRun(w http.ResponseWriter, r *http.Request, runID string) {
 	run, err := h.repo.GetRun(r.Context(), runID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, errors.New("run not found"))
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
