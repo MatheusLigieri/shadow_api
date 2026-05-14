@@ -150,13 +150,13 @@ func (r *SQLRepository) ListSnapshotsByRun(ctx context.Context, runID string) ([
 }
 
 func (r *SQLRepository) CreateDiff(ctx context.Context, diff *model.Diff) error {
-	q := "INSERT INTO diff (id, run_id, step_id, passed, diff_json, summary) VALUES (" + r.placeholder(1) + ", " + r.placeholder(2) + ", " + r.placeholder(3) + ", " + r.placeholder(4) + ", " + r.placeholder(5) + ", " + r.placeholder(6) + ")"
-	_, err := r.db.ExecContext(ctx, q, diff.ID, diff.RunID, diff.StepID, diff.Passed, diff.DiffJSON, diff.Summary)
+	q := "INSERT INTO diff (id, run_id, step_id, passed, diff_json, summary, delta_latency_ms, delta_bytes) VALUES (" + r.placeholder(1) + ", " + r.placeholder(2) + ", " + r.placeholder(3) + ", " + r.placeholder(4) + ", " + r.placeholder(5) + ", " + r.placeholder(6) + ", " + r.placeholder(7) + ", " + r.placeholder(8) + ")"
+	_, err := r.db.ExecContext(ctx, q, diff.ID, diff.RunID, diff.StepID, diff.Passed, diff.DiffJSON, diff.Summary, diff.DeltaLatencyMs, diff.DeltaBytes)
 	return err
 }
 
 func (r *SQLRepository) ListDiffsByRun(ctx context.Context, runID string) ([]model.Diff, error) {
-	q := "SELECT id, run_id, step_id, passed, diff_json, summary FROM diff WHERE run_id = " + r.placeholder(1)
+	q := "SELECT id, run_id, step_id, passed, diff_json, summary, delta_latency_ms, delta_bytes FROM diff WHERE run_id = " + r.placeholder(1)
 	rows, err := r.db.QueryContext(ctx, q, runID)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (r *SQLRepository) ListDiffsByRun(ctx context.Context, runID string) ([]mod
 	var diffs []model.Diff
 	for rows.Next() {
 		var d model.Diff
-		if err := rows.Scan(&d.ID, &d.RunID, &d.StepID, &d.Passed, &d.DiffJSON, &d.Summary); err != nil {
+		if err := rows.Scan(&d.ID, &d.RunID, &d.StepID, &d.Passed, &d.DiffJSON, &d.Summary, &d.DeltaLatencyMs, &d.DeltaBytes); err != nil {
 			return nil, err
 		}
 		diffs = append(diffs, d)

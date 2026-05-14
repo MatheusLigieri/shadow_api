@@ -22,15 +22,15 @@ Guia rapido de handoff para o agent com o status real do projeto (feito e penden
 - [x] Definir politica final de `max_body_bytes` (truncar sem erro)
 
 ### P1
-- [ ] Garantir alinhamento 1:1 entre handlers e OpenAPI
-- [ ] Padronizar payload/codigo de erro em todos os endpoints
-- [ ] Validar migracoes em SQLite e Postgres reais
-- [ ] Adicionar constraints de dominio (`mode`/`status`/`variant`)
+- [x] Garantir alinhamento 1:1 entre handlers e OpenAPI
+- [x] Padronizar payload/codigo de erro em todos os endpoints
+- [x] Validar migracoes em SQLite e Postgres reais
+- [x] Adicionar constraints de dominio (`mode`/`status`/`variant`)
 
 ### P2
-- [ ] Persistir `delta_latency` e `delta_bytes` por comparacao
-- [ ] Melhorar diff JSON para cenarios complexos (arrays/tipos mistos)
-- [ ] Criar testes de integracao HTTP + DB
+- [x] Persistir `delta_latency` e `delta_bytes` por comparacao
+- [x] Melhorar diff JSON para cenarios complexos (arrays/tipos mistos)
+- [x] Criar testes de integracao HTTP + DB
 - [x] Adicionar endpoint de healthcheck/readiness (`/health`, `/ready`)
 
 ## Checklist handoff

@@ -8,9 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	_ "modernc.org/sqlite"
 	"shadow_api/internal/config"
 	"shadow_api/internal/repository/sqlrepo"
+
+	_ "modernc.org/sqlite"
 )
 
 // testSchema mirrors 001_init.sql for in-memory test setup (without goose dependency).
@@ -62,6 +63,8 @@ CREATE TABLE diff (
 	passed BOOLEAN NOT NULL,
 	diff_json TEXT NOT NULL,
 	summary TEXT NOT NULL,
+	delta_latency_ms INTEGER NOT NULL DEFAULT 0,
+	delta_bytes INTEGER NOT NULL DEFAULT 0,
 	FOREIGN KEY (run_id) REFERENCES run(id) ON DELETE CASCADE,
 	FOREIGN KEY (step_id) REFERENCES suite_step(id) ON DELETE CASCADE
 );

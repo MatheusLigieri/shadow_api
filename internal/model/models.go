@@ -43,10 +43,12 @@ type Snapshot struct {
 }
 
 type Diff struct {
-	ID       string `json:"id"`
-	RunID    string `json:"run_id"`
-	StepID   string `json:"step_id"`
-	Passed   bool   `json:"passed"`
-	DiffJSON string `json:"diff_json"`
-	Summary  string `json:"summary"`
+	ID             string `json:"id"`
+	RunID          string `json:"run_id"`
+	StepID         string `json:"step_id"`
+	Passed         bool   `json:"passed"`
+	DiffJSON       string `json:"diff_json"`
+	Summary        string `json:"summary"`
+	DeltaLatencyMs int64  `json:"delta_latency_ms"`
+	DeltaBytes     int64  `json:"delta_bytes"`
 }

@@ -46,12 +46,14 @@ func (r *Runner) RunDual(ctx context.Context, run *model.Run, steps []model.Suit
 
 		res := diff.CompareBodies(snapA.Body, snapB.Body, r.cfg.Runner.IgnoreJSONPaths)
 		d := &model.Diff{
-			ID:       uuid.NewString(),
-			RunID:    run.ID,
-			StepID:   step.ID,
-			Passed:   res.Passed,
-			DiffJSON: res.DiffJSON,
-			Summary:  res.Summary,
+			ID:             uuid.NewString(),
+			RunID:          run.ID,
+			StepID:         step.ID,
+			Passed:         res.Passed,
+			DiffJSON:       res.DiffJSON,
+			Summary:        res.Summary,
+			DeltaLatencyMs: snapB.LatencyMs - snapA.LatencyMs,
+			DeltaBytes:     snapB.Bytes - snapA.Bytes,
 		}
 		if err := r.repo.CreateDiff(ctx, d); err != nil {
 			return err
@@ -82,12 +84,14 @@ func (r *Runner) RunSingleAfter(ctx context.Context, run *model.Run, steps []mod
 		}
 		res := diff.CompareBodies(snapBefore.Body, snapAfter.Body, r.cfg.Runner.IgnoreJSONPaths)
 		d := &model.Diff{
-			ID:       uuid.NewString(),
-			RunID:    run.ID,
-			StepID:   step.ID,
-			Passed:   res.Passed,
-			DiffJSON: res.DiffJSON,
-			Summary:  res.Summary,
+			ID:             uuid.NewString(),
+			RunID:          run.ID,
+			StepID:         step.ID,
+			Passed:         res.Passed,
+			DiffJSON:       res.DiffJSON,
+			Summary:        res.Summary,
+			DeltaLatencyMs: snapAfter.LatencyMs - snapBefore.LatencyMs,
+			DeltaBytes:     snapAfter.Bytes - snapBefore.Bytes,
 		}
 		if err := r.repo.CreateDiff(ctx, d); err != nil {
 			return err

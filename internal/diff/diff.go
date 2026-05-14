@@ -130,5 +130,7 @@ func diffJSON(a any, b any, path string, changes *[]Change) {
 }
 
 func valuesEqual(a any, b any) bool {
-	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+	aj, _ := json.Marshal(a)
+	bj, _ := json.Marshal(b)
+	return string(aj) == string(bj)
 }

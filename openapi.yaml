@@ -538,6 +538,12 @@ components:
           description: JSON array with changes
         summary:
           type: string
+        delta_latency_ms:
+          type: integer
+          description: Latency difference in milliseconds (B minus A, or AFTER minus BEFORE)
+        delta_bytes:
+          type: integer
+          description: Response size difference in bytes (B minus A, or AFTER minus BEFORE)
 
     Error:
       type: object
