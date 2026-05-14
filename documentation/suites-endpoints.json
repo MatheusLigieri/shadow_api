@@ -1,0 +1,168 @@
+{
+	"info": {
+		"_postman_id": "shadow-api-suites",
+		"name": "Shadow API - Suites",
+		"description": "Suite management endpoints - create, list, and retrieve test suites",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Suite",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set('suiteId', jsonData.id);",
+							"    console.log('Suite ID saved:', jsonData.id);",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"{{$timestamp}} - User API Test\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/suites",
+					"host": ["{{baseUrl}}"],
+					"path": ["suites"]
+				}
+			},
+			"response": [
+				{
+					"name": "201 Suite Created",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"User API Test\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/suites",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites"]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [],
+					"cookie": [],
+					"body": "{\n    \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"name\": \"User API Test\"\n}"
+				}
+			]
+		},
+		{
+			"name": "List All Suites",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/suites",
+					"host": ["{{baseUrl}}"],
+					"path": ["suites"]
+				}
+			},
+			"response": [
+				{
+					"name": "200 List of Suites",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suites",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites"]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [],
+					"cookie": [],
+					"body": "[\n    {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"name\": \"User API Test\"\n    },\n    {\n        \"id\": \"660e8400-e29b-41d4-a716-446655440001\",\n        \"name\": \"Product API Test\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Get Suite by ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/suites/{{suiteId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["suites", "{{suiteId}}"]
+				}
+			},
+			"response": [
+				{
+					"name": "200 Suite Details",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suites/550e8400-e29b-41d4-a716-446655440000",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites", "550e8400-e29b-41d4-a716-446655440000"]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [],
+					"cookie": [],
+					"body": "{\n    \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"name\": \"User API Test\"\n}"
+				},
+				{
+					"name": "404 Suite Not Found",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suites/invalid-id",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites", "invalid-id"]
+						}
+					},
+					"status": "Not Found",
+					"code": 404,
+					"_postman_previewlanguage": "json",
+					"header": [],
+					"cookie": [],
+					"body": "{\n    \"error\": \"sql: no rows in result set\",\n    \"timestamp\": \"2024-03-02T10:30:00Z\"\n}"
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "suiteId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

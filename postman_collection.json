@@ -1,0 +1,257 @@
+{
+	"info": {
+		"_postman_id": "shadow-api-collection",
+		"name": "Shadow API - Response Guard",
+		"description": "API para executar sequências de requests HTTP e comparar respostas (Dual/Single mode)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Suites",
+			"item": [
+				{
+					"name": "Create Suite",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"API Test Suite\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/suites",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Suites",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suites",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Suite by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suites/{{suiteId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites", "{{suiteId}}"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Steps",
+			"item": [
+				{
+					"name": "Create Step",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"position\": 1,\n  \"method\": \"GET\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{\\\"Authorization\\\":\\\"Bearer token\\\"}\",\n  \"body_text\": \"\",\n  \"extractors_json\": null\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites", "{{suiteId}}", "steps"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Steps by Suite",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites", "{{suiteId}}", "steps"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Step",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"position\": 1,\n  \"method\": \"POST\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{\\\"Content-Type\\\":\\\"application/json\\\"}\",\n  \"body_text\": \"{\\\"name\\\":\\\"John\\\"}\",\n  \"extractors_json\": null\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/steps/{{stepId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["steps", "{{stepId}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Step",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/steps/{{stepId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["steps", "{{stepId}}"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Runs",
+			"item": [
+				{
+					"name": "Run Dual (A vs B)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"suite_id\": \"{{suiteId}}\",\n  \"base_a\": \"https://api-old.example.com\",\n  \"base_b\": \"https://api-new.example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/runs/dual",
+							"host": ["{{baseUrl}}"],
+							"path": ["runs", "dual"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Run Single Start (Before)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"suite_id\": \"{{suiteId}}\",\n  \"base\": \"https://api.example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/runs/single/start",
+							"host": ["{{baseUrl}}"],
+							"path": ["runs", "single", "start"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Run Continue (After)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{baseUrl}}/runs/{{runId}}/continue",
+							"host": ["{{baseUrl}}"],
+							"path": ["runs", "{{runId}}", "continue"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Run Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/runs/{{runId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["runs", "{{runId}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Run Diffs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/runs/{{runId}}/diffs",
+							"host": ["{{baseUrl}}"],
+							"path": ["runs", "{{runId}}", "diffs"]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "suiteId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "stepId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "runId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

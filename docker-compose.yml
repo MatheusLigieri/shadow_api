@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shadow-api
+    ports:
+      - "8080:8080"
+    environment:
+      - CONFIG_PATH=/app/config.docker.yaml
+    volumes:
+      - ./config.docker.yaml:/app/config.docker.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - shadow-network
+    command: ["/bin/sh", "-c", "cp /app/config.docker.yaml /app/config.yaml && ./goose -dir migrations postgres \"user=postgres password=postgres dbname=shadow_api host=postgres port=5432 sslmode=disable\" up && ./api"]
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: shadow-postgres
+    environment:
+      POSTGRES_DB: shadow_api
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d shadow_api"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shadow-network
+
+volumes:
+  postgres_data:
+
+networks:
+  shadow-network:
+    driver: bridge

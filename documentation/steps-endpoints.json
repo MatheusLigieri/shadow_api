@@ -1,0 +1,205 @@
+{
+	"info": {
+		"_postman_id": "shadow-api-steps",
+		"name": "Shadow API - Steps",
+		"description": "Step management endpoints - add, update, list, and delete steps in suites",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Step",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"if (pm.response.code === 201) {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set('stepId', jsonData.id);",
+							"    console.log('Step ID saved:', jsonData.id);",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"position\": 1,\n  \"method\": \"GET\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{\\\"Authorization\\\":\\\"Bearer token123\\\",\\\"Accept\\\":\\\"application/json\\\"}\",\n  \"body_text\": \"\",\n  \"extractors_json\": null\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+					"host": ["{{baseUrl}}"],
+					"path": ["suites", "{{suiteId}}", "steps"]
+				}
+			},
+			"response": [
+				{
+					"name": "201 Step Created",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"position\": 1,\n  \"method\": \"GET\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{\\\"Authorization\\\":\\\"Bearer token\\\"}\",\n  \"body_text\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites", "{{suiteId}}", "steps"]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [],
+					"cookie": [],
+					"body": "{\n    \"id\": \"770e8400-e29b-41d4-a716-446655440002\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"position\": 1,\n    \"method\": \"GET\",\n    \"path\": \"/api/users\",\n    \"headers_json\": \"{\\\"Authorization\\\":\\\"Bearer token\\\"}\",\n    \"body_text\": \"\",\n    \"extractors_json\": null\n}"
+				}
+			]
+		},
+		{
+			"name": "List Steps by Suite",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+					"host": ["{{baseUrl}}"],
+					"path": ["suites", "{{suiteId}}", "steps"]
+				}
+			},
+			"response": [
+				{
+					"name": "200 Steps List",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+							"host": ["{{baseUrl}}"],
+							"path": ["suites", "{{suiteId}}", "steps"]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [],
+					"cookie": [],
+					"body": "[\n    {\n        \"id\": \"770e8400-e29b-41d4-a716-446655440002\",\n        \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"position\": 1,\n        \"method\": \"GET\",\n        \"path\": \"/api/users\",\n        \"headers_json\": \"{}\",\n        \"body_text\": \"\",\n        \"extractors_json\": null\n    },\n    {\n        \"id\": \"880e8400-e29b-41d4-a716-446655440003\",\n        \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"position\": 2,\n        \"method\": \"POST\",\n        \"path\": \"/api/users\",\n        \"headers_json\": \"{\\\"Content-Type\\\":\\\"application/json\\\"}\",\n        \"body_text\": \"{\\\"name\\\":\\\"John\\\"}\",\n        \"extractors_json\": null\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Update Step",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"position\": 2,\n  \"method\": \"POST\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{\\\"Content-Type\\\":\\\"application/json\\\",\\\"Authorization\\\":\\\"Bearer token123\\\"}\",\n  \"body_text\": \"{\\\"name\\\":\\\"John Doe\\\",\\\"email\\\":\\\"john@example.com\\\"}\",\n  \"extractors_json\": null\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/steps/{{stepId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["steps", "{{stepId}}"]
+				}
+			},
+			"response": [
+				{
+					"name": "200 Step Updated",
+					"originalRequest": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"position\": 2,\n  \"method\": \"POST\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{}\",\n  \"body_text\": \"{\\\"name\\\":\\\"Jane\\\"}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/steps/{{stepId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["steps", "{{stepId}}"]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [],
+					"cookie": [],
+					"body": "{\n    \"id\": \"770e8400-e29b-41d4-a716-446655440002\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"position\": 2,\n    \"method\": \"POST\",\n    \"path\": \"/api/users\",\n    \"headers_json\": \"{}\",\n    \"body_text\": \"{\\\"name\\\":\\\"Jane\\\"}\",\n    \"extractors_json\": null\n}"
+				}
+			]
+		},
+		{
+			"name": "Delete Step",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/steps/{{stepId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["steps", "{{stepId}}"]
+				}
+			},
+			"response": [
+				{
+					"name": "204 Step Deleted",
+					"originalRequest": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/steps/{{stepId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["steps", "{{stepId}}"]
+						}
+					},
+					"status": "No Content",
+					"code": 204,
+					"_postman_previewlanguage": "text",
+					"header": [],
+					"cookie": [],
+					"body": ""
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "suiteId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "stepId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

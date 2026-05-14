@@ -1,0 +1,339 @@
+{
+	"info": {
+		"_postman_id": "shadow-api-runs",
+		"name": "Shadow API - Runs",
+		"description": "Run execution endpoints - dual mode (A vs B), single mode (before/after), status monitoring, and diff retrieval",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Dual Mode",
+			"item": [
+				{
+					"name": "Run Dual (A vs B)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set('runId', jsonData.id);",
+									"    console.log('Run ID saved:', jsonData.id);",
+									"    console.log('Run Status:', jsonData.status);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"suite_id\": \"{{suiteId}}\",\n  \"base_a\": \"https://api-old.example.com\",\n  \"base_b\": \"https://api-new.example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/runs/dual",
+							"host": ["{{baseUrl}}"],
+							"path": ["runs", "dual"]
+						}
+					},
+					"response": [
+						{
+							"name": "201 Dual Run Completed",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"base_a\": \"https://api-old.example.com\",\n  \"base_b\": \"https://api-new.example.com\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/runs/dual",
+									"host": ["{{baseUrl}}"],
+									"path": ["runs", "dual"]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"id\": \"990e8400-e29b-41d4-a716-446655440004\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"mode\": \"DUAL\",\n    \"status\": \"COMPLETED\",\n    \"base_a\": \"https://api-old.example.com\",\n    \"base_b\": \"https://api-new.example.com\",\n    \"base_single\": null,\n    \"created_at\": \"2024-03-02T10:30:00Z\"\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Single Mode",
+			"item": [
+				{
+					"name": "Start Single Run (Before)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set('runId', jsonData.id);",
+									"    console.log('Run ID saved:', jsonData.id);",
+									"    console.log('Run Status:', jsonData.status);",
+									"    console.log('Waiting for user to call continue...');",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"suite_id\": \"{{suiteId}}\",\n  \"base\": \"https://api.example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/runs/single/start",
+							"host": ["{{baseUrl}}"],
+							"path": ["runs", "single", "start"]
+						}
+					},
+					"response": [
+						{
+							"name": "201 Single Run Started (WAITING_USER)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"base\": \"https://api.example.com\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/runs/single/start",
+									"host": ["{{baseUrl}}"],
+									"path": ["runs", "single", "start"]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"id\": \"aa0e8400-e29b-41d4-a716-446655440005\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"mode\": \"SINGLE\",\n    \"status\": \"WAITING_USER\",\n    \"base_a\": null,\n    \"base_b\": null,\n    \"base_single\": \"https://api.example.com\",\n    \"created_at\": \"2024-03-02T10:30:00Z\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Continue Single Run (After)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    console.log('Run Status:', jsonData.status);",
+									"    if (jsonData.status === 'COMPLETED') {",
+									"        console.log('✅ Run completed! Check diffs with GET /runs/' + jsonData.id + '/diffs');",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{baseUrl}}/runs/{{runId}}/continue",
+							"host": ["{{baseUrl}}"],
+							"path": ["runs", "{{runId}}", "continue"]
+						}
+					},
+					"response": [
+						{
+							"name": "200 Single Run Completed",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{baseUrl}}/runs/{{runId}}/continue",
+									"host": ["{{baseUrl}}"],
+									"path": ["runs", "{{runId}}", "continue"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"id\": \"aa0e8400-e29b-41d4-a716-446655440005\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"mode\": \"SINGLE\",\n    \"status\": \"COMPLETED\",\n    \"base_a\": null,\n    \"base_b\": null,\n    \"base_single\": \"https://api.example.com\",\n    \"created_at\": \"2024-03-02T10:30:00Z\"\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Monitor & Results",
+			"item": [
+				{
+					"name": "Get Run Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/runs/{{runId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["runs", "{{runId}}"]
+						}
+					},
+					"response": [
+						{
+							"name": "200 Run Status",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/runs/{{runId}}",
+									"host": ["{{baseUrl}}"],
+									"path": ["runs", "{{runId}}"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"id\": \"990e8400-e29b-41d4-a716-446655440004\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"mode\": \"DUAL\",\n    \"status\": \"COMPLETED\",\n    \"base_a\": \"https://api-old.example.com\",\n    \"base_b\": \"https://api-new.example.com\",\n    \"base_single\": null,\n    \"created_at\": \"2024-03-02T10:30:00Z\"\n}"
+						},
+						{
+							"name": "404 Run Not Found",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/runs/invalid-id",
+									"host": ["{{baseUrl}}"],
+									"path": ["runs", "invalid-id"]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "{\n    \"error\": \"sql: no rows in result set\",\n    \"timestamp\": \"2024-03-02T10:30:00Z\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Run Diffs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/runs/{{runId}}/diffs",
+							"host": ["{{baseUrl}}"],
+							"path": ["runs", "{{runId}}", "diffs"]
+						}
+					},
+					"response": [
+						{
+							"name": "200 Run Diffs (No Changes)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/runs/{{runId}}/diffs",
+									"host": ["{{baseUrl}}"],
+									"path": ["runs", "{{runId}}", "diffs"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "[\n    {\n        \"id\": \"bb0e8400-e29b-41d4-a716-446655440006\",\n        \"run_id\": \"990e8400-e29b-41d4-a716-446655440004\",\n        \"step_id\": \"770e8400-e29b-41d4-a716-446655440002\",\n        \"passed\": true,\n        \"diff_json\": \"[]\",\n        \"summary\": \"no changes\"\n    }\n]"
+						},
+						{
+							"name": "200 Run Diffs (With Changes)",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/runs/{{runId}}/diffs",
+									"host": ["{{baseUrl}}"],
+									"path": ["runs", "{{runId}}", "diffs"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [],
+							"cookie": [],
+							"body": "[\n    {\n        \"id\": \"cc0e8400-e29b-41d4-a716-446655440007\",\n        \"run_id\": \"990e8400-e29b-41d4-a716-446655440004\",\n        \"step_id\": \"770e8400-e29b-41d4-a716-446655440002\",\n        \"passed\": false,\n        \"diff_json\": \"[{\\\"path\\\":\\\"$.price\\\",\\\"before\\\":100,\\\"after\\\":120},{\\\"path\\\":\\\"$.stock\\\",\\\"before\\\":50,\\\"after\\\":45}]\",\n        \"summary\": \"2 change(s)\"\n    }\n]"
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "suiteId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "runId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

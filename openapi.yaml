@@ -1,0 +1,525 @@
+openapi: 3.0.3
+info:
+  title: Shadow API - Response Guard
+  description: |
+    API para executar sequências de requests HTTP e comparar respostas para detectar regressões.
+    
+    **Modos de execução:**
+    - **Dual:** Executa requests em endpoint A e endpoint B, compara A vs B
+    - **Single:** Executa requests, salva snapshot (before), aguarda comando continue, executa novamente (after) e compara
+  version: 1.0.0
+  contact:
+    name: Shadow API
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Infra
+    description: Health and readiness endpoints
+  - name: Suites
+    description: Gerenciamento de test suites
+  - name: Steps
+    description: Gerenciamento de steps dentro de suites
+  - name: Runs
+    description: Execução e monitoramento de test runs
+
+paths:
+  /health:
+    get:
+      tags:
+        - Infra
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /ready:
+    get:
+      tags:
+        - Infra
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+        '503':
+          description: Service not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /suites:
+    post:
+      tags:
+        - Suites
+      summary: Create a new suite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: "API Test Suite"
+      responses:
+        '201':
+          description: Suite created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Suite'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+        - Suites
+      summary: List all suites
+      responses:
+        '200':
+          description: List of suites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Suite'
+
+  /suites/{id}:
+    get:
+      tags:
+        - Suites
+      summary: Get suite by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Suite details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Suite'
+        '404':
+          description: Suite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /suites/{id}/steps:
+    post:
+      tags:
+        - Steps
+      summary: Create a new step in suite
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepInput'
+      responses:
+        '201':
+          description: Step created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Step'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+        - Steps
+      summary: List all steps in suite
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of steps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Step'
+
+  /steps/{id}:
+    put:
+      tags:
+        - Steps
+      summary: Update a step
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepInput'
+      responses:
+        '200':
+          description: Step updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Step'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Steps
+      summary: Delete a step
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Step deleted successfully
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /runs/dual:
+    post:
+      tags:
+        - Runs
+      summary: Start a dual run (A vs B)
+      description: Executes all steps against two different base URLs and compares results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - suite_id
+                - base_a
+                - base_b
+              properties:
+                suite_id:
+                  type: string
+                  format: uuid
+                base_a:
+                  type: string
+                  format: uri
+                  example: "https://api-old.example.com"
+                base_b:
+                  type: string
+                  format: uri
+                  example: "https://api-new.example.com"
+      responses:
+        '201':
+          description: Run created and completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Suite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /runs/single/start:
+    post:
+      tags:
+        - Runs
+      summary: Start a single run (before snapshot)
+      description: Executes all steps and saves snapshots. Run status will be WAITING_USER
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - suite_id
+                - base
+              properties:
+                suite_id:
+                  type: string
+                  format: uuid
+                base:
+                  type: string
+                  format: uri
+                  example: "https://api.example.com"
+      responses:
+        '201':
+          description: Run started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /runs/{id}/continue:
+    post:
+      tags:
+        - Runs
+      summary: Continue a single run (after snapshot)
+      description: Executes steps again and compares with before snapshots
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Run completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '400':
+          description: Run not in WAITING_USER state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /runs/{id}:
+    get:
+      tags:
+        - Runs
+      summary: Get run status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Run details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+        '404':
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /runs/{id}/diffs:
+    get:
+      tags:
+        - Runs
+      summary: Get run diffs
+      description: Returns all differences found during run execution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of diffs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Diff'
+
+components:
+  schemas:
+    Suite:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    Step:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        suite_id:
+          type: string
+          format: uuid
+        position:
+          type: integer
+        method:
+          type: string
+          enum: [GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS]
+        path:
+          type: string
+        headers_json:
+          type: string
+          description: JSON string with headers
+        body_text:
+          type: string
+        extractors_json:
+          type: string
+          nullable: true
+          description: JSON string with extractors (optional)
+
+    StepInput:
+      type: object
+      required:
+        - position
+        - method
+        - path
+      properties:
+        position:
+          type: integer
+          minimum: 0
+        method:
+          type: string
+          enum: [GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS]
+          example: "GET"
+        path:
+          type: string
+          example: "/api/users"
+        headers_json:
+          type: string
+          example: '{"Authorization":"Bearer token"}'
+        body_text:
+          type: string
+          example: '{"name":"John"}'
+        extractors_json:
+          type: string
+          nullable: true
+
+    Run:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        suite_id:
+          type: string
+          format: uuid
+        mode:
+          type: string
+          enum: [DUAL, SINGLE]
+        status:
+          type: string
+          enum: [RUNNING, WAITING_USER, COMPLETED]
+        base_a:
+          type: string
+          format: uri
+          nullable: true
+        base_b:
+          type: string
+          format: uri
+          nullable: true
+        base_single:
+          type: string
+          format: uri
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Diff:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        run_id:
+          type: string
+          format: uuid
+        step_id:
+          type: string
+          format: uuid
+        passed:
+          type: boolean
+        diff_json:
+          type: string
+          description: JSON array with changes
+        summary:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        timestamp:
+          type: string
+          format: date-time

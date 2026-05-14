@@ -1,0 +1,8 @@
+.idea/
+.vscode/
+*.db
+*.sqlite
+*.sqlite3
+bin/
+config.yaml
+go.sum.tmp

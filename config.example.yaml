@@ -1,0 +1,20 @@
+# SQLite config (default for local dev)
+app:
+  port: 8080
+  log_level: "info"
+  max_body_bytes: 1048576
+
+database:
+  driver: "sqlite"
+
+  sqlite:
+    path: "./data/shadow.db"
+
+  postgres:
+    dsn: "postgres://postgres:postgres@postgres:5432/shadow_api?sslmode=disable"
+
+runner:
+  timeout_ms: 15000
+  ignore_json_paths:
+    - "$.timestamp"
+    - "$.requestId"
