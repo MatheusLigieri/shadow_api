@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync/atomic"
 	"testing"
 
 	"shadow_api/internal/config"
@@ -91,11 +94,15 @@ func newTestHandler(t *testing.T) http.Handler {
 func TestHealth(t *testing.T) {
 	h := newTestHandler(t)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req.Header.Set("Origin", "https://example.com")
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("expected Access-Control-Allow-Origin=*, got %q", got)
 	}
 	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
@@ -103,6 +110,30 @@ func TestHealth(t *testing.T) {
 	}
 	if resp["status"] != "ok" {
 		t.Fatalf("expected status=ok, got %v", resp["status"])
+	}
+}
+
+func TestCORSPreflight(t *testing.T) {
+	h := newTestHandler(t)
+	req := httptest.NewRequest(http.MethodOptions, "/suites", nil)
+	req.Header.Set("Origin", "https://example.com")
+	req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	req.Header.Set("Access-Control-Request-Headers", "Content-Type, X-Custom-Header")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("expected Access-Control-Allow-Origin=*, got %q", got)
+	}
+	if got := w.Header().Get("Access-Control-Allow-Methods"); got != "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS" {
+		t.Fatalf("unexpected Access-Control-Allow-Methods: %q", got)
+	}
+	if got := w.Header().Get("Access-Control-Allow-Headers"); got != "Content-Type, X-Custom-Header" {
+		t.Fatalf("unexpected Access-Control-Allow-Headers: %q", got)
 	}
 }
 
@@ -331,6 +362,299 @@ func TestGetRunNotFound(t *testing.T) {
 func TestContinueRunNotFound(t *testing.T) {
 	h := newTestHandler(t)
 	req := httptest.NewRequest(http.MethodPost, "/runs/nonexistent/continue", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestDualRunDiffsReturnFullBodies(t *testing.T) {
+	upstreamA := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"price":100,"items":[{"id":1}]}`)) //nolint:errcheck
+	}))
+	defer upstreamA.Close()
+	upstreamB := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"price":120,"items":[{"id":1}]}`)) //nolint:errcheck
+	}))
+	defer upstreamB.Close()
+
+	h := newTestHandler(t)
+	do := func(method, path string, body any) *httptest.ResponseRecorder {
+		var buf bytes.Buffer
+		if body != nil {
+			json.NewEncoder(&buf).Encode(body) //nolint:errcheck
+		}
+		req := httptest.NewRequest(method, path, &buf)
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		return w
+	}
+
+	var suite map[string]any
+	json.Unmarshal(do(http.MethodPost, "/suites", map[string]any{"name": "s"}).Body.Bytes(), &suite) //nolint:errcheck
+	suiteID := suite["id"].(string)
+
+	if w := do(http.MethodPost, "/suites/"+suiteID+"/steps", map[string]any{
+		"position": 1, "method": "GET", "path": "/product",
+	}); w.Code != http.StatusCreated {
+		t.Fatalf("create step: %d %s", w.Code, w.Body.String())
+	}
+
+	w := do(http.MethodPost, "/runs/dual", map[string]any{
+		"suite_id": suiteID, "base_a": upstreamA.URL, "base_b": upstreamB.URL,
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("dual run: %d %s", w.Code, w.Body.String())
+	}
+	var run map[string]any
+	json.Unmarshal(w.Body.Bytes(), &run) //nolint:errcheck
+
+	w = do(http.MethodGet, "/runs/"+run["id"].(string)+"/diffs", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("diffs: %d %s", w.Code, w.Body.String())
+	}
+	var diffs []struct {
+		Passed bool `json:"passed"`
+		Before struct {
+			Variant    string         `json:"variant"`
+			StatusCode int            `json:"status_code"`
+			Body       map[string]any `json:"body"`
+		} `json:"before"`
+		After struct {
+			Variant string         `json:"variant"`
+			Body    map[string]any `json:"body"`
+		} `json:"after"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &diffs); err != nil {
+		t.Fatalf("decode diffs: %v: %s", err, w.Body.String())
+	}
+	if len(diffs) != 1 {
+		t.Fatalf("expected 1 diff, got %d", len(diffs))
+	}
+	d := diffs[0]
+	if d.Passed {
+		t.Fatal("expected diff to fail")
+	}
+	if d.Before.Variant != "A" || d.After.Variant != "B" {
+		t.Fatalf("unexpected variants: %q / %q", d.Before.Variant, d.After.Variant)
+	}
+	if d.Before.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status code: %d", d.Before.StatusCode)
+	}
+	if d.Before.Body["price"] != float64(100) || d.After.Body["price"] != float64(120) {
+		t.Fatalf("unexpected bodies: %v / %v", d.Before.Body, d.After.Body)
+	}
+	if _, ok := d.After.Body["items"].([]any); !ok {
+		t.Fatalf("expected full body with items, got %v", d.After.Body)
+	}
+}
+
+func TestSingleRunDiffsReturnBeforeAfter(t *testing.T) {
+	var phase atomic.Value
+	phase.Store("before")
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/text" {
+			fmt.Fprintf(w, "phase=%s", phase.Load())
+			return
+		}
+		fmt.Fprintf(w, `{"phase":%q}`, phase.Load())
+	}))
+	defer upstream.Close()
+
+	h := newTestHandler(t)
+	do := func(method, path string, body any) *httptest.ResponseRecorder {
+		var buf bytes.Buffer
+		if body != nil {
+			json.NewEncoder(&buf).Encode(body) //nolint:errcheck
+		}
+		req := httptest.NewRequest(method, path, &buf)
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+		return w
+	}
+
+	var suite map[string]any
+	json.Unmarshal(do(http.MethodPost, "/suites", map[string]any{"name": "s"}).Body.Bytes(), &suite) //nolint:errcheck
+	suiteID := suite["id"].(string)
+
+	stepPaths := map[string]string{}
+	for i, path := range []string{"/json", "/text"} {
+		w := do(http.MethodPost, "/suites/"+suiteID+"/steps", map[string]any{
+			"position": i + 1, "method": "GET", "path": path,
+		})
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create step: %d %s", w.Code, w.Body.String())
+		}
+		var step map[string]any
+		json.Unmarshal(w.Body.Bytes(), &step) //nolint:errcheck
+		stepPaths[step["id"].(string)] = path
+	}
+
+	w := do(http.MethodPost, "/runs/single/start", map[string]any{"suite_id": suiteID, "base": upstream.URL})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("start: %d %s", w.Code, w.Body.String())
+	}
+	var run map[string]any
+	json.Unmarshal(w.Body.Bytes(), &run) //nolint:errcheck
+	runID := run["id"].(string)
+
+	phase.Store("after")
+	if w := do(http.MethodPost, "/runs/"+runID+"/continue", nil); w.Code != http.StatusOK {
+		t.Fatalf("continue: %d %s", w.Code, w.Body.String())
+	}
+
+	w = do(http.MethodGet, "/runs/"+runID+"/diffs", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("diffs: %d %s", w.Code, w.Body.String())
+	}
+	var diffs []struct {
+		StepID string `json:"step_id"`
+		Before struct {
+			Variant string `json:"variant"`
+			Body    any    `json:"body"`
+		} `json:"before"`
+		After struct {
+			Variant string `json:"variant"`
+			Body    any    `json:"body"`
+		} `json:"after"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &diffs); err != nil {
+		t.Fatalf("decode diffs: %v: %s", err, w.Body.String())
+	}
+	if len(diffs) != 2 {
+		t.Fatalf("expected 2 diffs, got %d: %s", len(diffs), w.Body.String())
+	}
+	for _, d := range diffs {
+		if d.Before.Variant != "BEFORE" || d.After.Variant != "AFTER" {
+			t.Fatalf("unexpected variants: %q / %q", d.Before.Variant, d.After.Variant)
+		}
+		switch stepPaths[d.StepID] {
+		case "/json":
+			before, ok := d.Before.Body.(map[string]any)
+			after, ok2 := d.After.Body.(map[string]any)
+			if !ok || !ok2 || before["phase"] != "before" || after["phase"] != "after" {
+				t.Fatalf("expected JSON bodies, got %#v / %#v", d.Before.Body, d.After.Body)
+			}
+		case "/text":
+			if d.Before.Body != "phase=before" || d.After.Body != "phase=after" {
+				t.Fatalf("expected string bodies, got %#v / %#v", d.Before.Body, d.After.Body)
+			}
+		default:
+			t.Fatalf("unexpected step id %q", d.StepID)
+		}
+	}
+}
+
+func assertJSONError(t *testing.T, w *httptest.ResponseRecorder) string {
+	t.Helper()
+	if got := w.Header().Get("Content-Type"); got != "application/json" {
+		t.Fatalf("expected JSON content type, got %q", got)
+	}
+	var resp struct {
+		Error     string `json:"error"`
+		Timestamp string `json:"timestamp"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode error body: %v: %q", err, w.Body.String())
+	}
+	if resp.Error == "" || resp.Timestamp == "" {
+		t.Fatalf("expected error and timestamp, got %q", w.Body.String())
+	}
+	return resp.Error
+}
+
+func TestMethodNotAllowedUsesJSONError(t *testing.T) {
+	h := newTestHandler(t)
+	cases := []struct{ method, path, allow string }{
+		{http.MethodPost, "/health", "GET"},
+		{http.MethodPost, "/ready", "GET"},
+		{http.MethodDelete, "/suites", "GET, POST"},
+		{http.MethodPost, "/suites/x", "GET"},
+		{http.MethodDelete, "/suites/x/steps", "GET, POST"},
+		{http.MethodGet, "/steps/x", "PUT, DELETE"},
+		{http.MethodGet, "/runs/dual", "POST"},
+		{http.MethodGet, "/runs/single/start", "POST"},
+		{http.MethodGet, "/runs/x/continue", "POST"},
+		{http.MethodPost, "/runs/x/diffs", "GET"},
+		{http.MethodPost, "/runs/x", "GET"},
+	}
+	for _, c := range cases {
+		t.Run(c.method+" "+c.path, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, httptest.NewRequest(c.method, c.path, nil))
+			if w.Code != http.StatusMethodNotAllowed {
+				t.Fatalf("expected 405, got %d", w.Code)
+			}
+			if got := w.Header().Get("Allow"); got != c.allow {
+				t.Fatalf("expected Allow %q, got %q", c.allow, got)
+			}
+			assertJSONError(t, w)
+		})
+	}
+}
+
+func TestNotFoundUsesJSONError(t *testing.T) {
+	h := newTestHandler(t)
+	cases := []struct{ path, message string }{
+		{"/", "not found"},
+		{"/nope", "not found"},
+		{"/suites/", "not found"},
+		{"/suites/x/y", "not found"},
+		{"/steps/", "not found"},
+		{"/runs/", "not found"},
+		{"/suites/missing", "suite not found"},
+		{"/runs/missing", "run not found"},
+		{"/runs/missing/diffs", "run not found"},
+	}
+	for _, c := range cases {
+		t.Run(c.path, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, c.path, nil))
+			if w.Code != http.StatusNotFound {
+				t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+			}
+			if got := assertJSONError(t, w); got != c.message {
+				t.Fatalf("expected message %q, got %q", c.message, got)
+			}
+		})
+	}
+}
+
+func TestDocsRedirectStillWorks(t *testing.T) {
+	h := newTestHandler(t)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/docs", nil))
+	if w.Code != http.StatusMovedPermanently {
+		t.Fatalf("expected 301, got %d: %s", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get("Location"); got != "/docs/" {
+		t.Fatalf("expected redirect to /docs/, got %q", got)
+	}
+
+	// /docs/ must serve the UI itself: redirecting to /docs/index.html loops,
+	// because http.FileServer redirects index.html back to the directory.
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/docs/", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (Location %q)", w.Code, w.Header().Get("Location"))
+	}
+	if !strings.Contains(w.Body.String(), "swagger") {
+		t.Fatalf("expected Swagger UI page, got %q", w.Body.String())
+	}
+}
+
+func TestListDiffsRunNotFound(t *testing.T) {
+	h := newTestHandler(t)
+	req := httptest.NewRequest(http.MethodGet, "/runs/nonexistent/diffs", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
