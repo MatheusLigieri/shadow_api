@@ -10,7 +10,7 @@ go run ./cmd/api
 
 **Docker (Postgres):**
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 API will be available at: http://localhost:8080
@@ -76,7 +76,9 @@ Response shows differences found:
     "step_id": "...",
     "passed": false,
     "diff_json": "[{\"path\":\"$.price\",\"before\":100,\"after\":120}]",
-    "summary": "1 change(s)"
+    "summary": "1 change(s)",
+    "delta_latency_ms": -4,
+    "delta_bytes": 12
   }
 ]
 ```
@@ -109,8 +111,8 @@ curl http://localhost:8080/runs/{run_id}/diffs
 ## 5. Import Postman Collection
 
 1. Open Postman
-2. **Import** → Select `postman_collection.json`
-3. Update variables as needed
+2. **Import** → Select `shadow_api_collection.json`
+3. Set `baseUrl`; the collection uses `suiteId`, `stepId`, and `runId` variables
 4. Start testing!
 
 ## Common Use Cases
@@ -147,11 +149,18 @@ goose -dir ./migrations sqlite ./data/shadow.db up
 
 **Docker cleanup:**
 ```bash
-docker-compose down -v
-docker-compose up --build
+docker compose down -v
+docker compose up --build
 ```
 
 **Check logs:**
 ```bash
-docker-compose logs -f api
+docker compose logs -f api
 ```
+
+## Current Implementation Notes
+
+- `go test ./...` passes.
+- Docker/Postgres, Swagger UI, and the suite → step → DUAL/SINGLE run → diffs flow last passed a smoke test on 2026-11-05. Start the stack with `docker compose up -d --build`.
+- Each item from `GET /runs/{run_id}/diffs` also has `before` and `after` objects with the variant, status code, latency, bytes, hash, and full body of the compared responses.
+- HTTP status codes are saved in snapshots but are not compared yet. `extractors_json` is stored but extractors are not executed.

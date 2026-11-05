@@ -1,21 +1,24 @@
 # Response Guard (MVP)
 
-API para executar sequências de requests HTTP e comparar respostas para detectar regressões.
+API em Go para executar sequências de requests HTTP e comparar respostas para detectar regressões.
+
+## Implementation Status
+
+- Core MVP implemented: suites, steps, sequential DUAL and SINGLE runs, snapshots, body diffs, and persisted latency/size deltas.
+- `go test ./...` passes on the current `chore/infra` branch.
+- Docker/Postgres smoke flow (Swagger UI, health/readiness, DUAL and SINGLE runs, diffs) last passed on 2026-11-05. Start the stack with `docker compose up -d --build`.
+- Known gaps: response HTTP status codes are stored but not included in diff comparisons; `extractors_json` is validated and persisted but not executed; `PUT`/`DELETE /steps/{id}` report success for a step that does not exist; Postgres databases that applied `001_init.sql` before its `CHECK` constraints were added do not have them. See [the status doc](context/planejamento-status.md).
 
 ## Documentation
 
-- **Swagger UI:** http://localhost:8080/docs
+- **Swagger UI:** http://localhost:8080/docs/
 - **OpenAPI Spec:** [openapi.yaml](openapi.yaml)
-- **Postman Collection:** [postman_collection.json](postman_collection.json)
+- **Unified Postman Collection:** [shadow_api_collection.json](shadow_api_collection.json)
+- **Project context:** [spec](context/spec.md), [current status](context/planejamento-status.md), [handoff checklist](context/todo.md)
 
 ### Import Postman Collection
 
-1. Open Postman
-2. Click **Import** → **Upload Files**
-3. Select `postman_collection.json`
-4. Collection variables:
-   - `baseUrl`: http://localhost:8080
-   - `suiteId`, `stepId`, `runId`: Updated from responses
+Import `shadow_api_collection.json` into Postman. It contains Infra, Suites, Steps, and Runs folders. Set `baseUrl` to `http://localhost:8080`; `suiteId`, `stepId`, and `runId` are collection variables used by the requests.
 
 ## Quick Start
 
@@ -37,7 +40,7 @@ go run ./cmd/api
 ### Docker Setup (with Postgres)
 
 ```bash
-docker-compose up --build
+docker compose up -d --build
 ```
 
 The API will be available at `http://localhost:8080`
@@ -69,6 +72,12 @@ goose -dir ./migrations postgres "postgres://user:pass@localhost/db?sslmode=disa
 
 ## API Endpoints
 
+### CORS
+- CORS is fully open for testing: `Access-Control-Allow-Origin: *`, methods `GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS`, any header requested in `Access-Control-Request-Headers` is echoed back, and preflight `OPTIONS` returns `204`. Restrict this before exposing the service.
+
+### Errors
+- Error responses are JSON: `{"error": "...", "timestamp": "..."}`. Unknown routes return `404`; an unsupported method on a known route returns `405` with an `Allow` header; a request body whose `Content-Type` is not `application/json` returns `415`.
+
 ### Infra
 - `GET /health` - Liveness check
 - `GET /ready` - Readiness check (database)
@@ -89,7 +98,7 @@ goose -dir ./migrations postgres "postgres://user:pass@localhost/db?sslmode=disa
 - `POST /runs/single/start` - Start single run (capture before)
 - `POST /runs/{id}/continue` - Continue single run (capture after)
 - `GET /runs/{id}` - Get run status
-- `GET /runs/{id}/diffs` - List diffs
+- `GET /runs/{id}/diffs` - List diffs, each with the full compared responses in `before` / `after` (variant, status code, latency, bytes, hash and the complete body as JSON)
 
 ## Validations
 
@@ -104,4 +113,4 @@ goose -dir ./migrations postgres "postgres://user:pass@localhost/db?sslmode=disa
 
 ```bash
 go test ./...
-
+```

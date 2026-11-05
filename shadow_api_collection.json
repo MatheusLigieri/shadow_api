@@ -1,0 +1,887 @@
+{
+  "info": {
+    "_postman_id": "shadow-api-v2",
+    "name": "Shadow API - Response Guard",
+    "description": "Collection unificada da Shadow API.\n\nOrganizada em pastas por domínio:\n- **Infra** — liveness e readiness\n- **Suites** — gerenciamento de test suites\n- **Steps** — gerenciamento de steps dentro de suites\n- **Runs** — execução dual (A vs B) e single (before/after), status e diffs\n\nVariáveis de coleção:\n- `baseUrl` — base da API (padrão: http://localhost:8080)\n- `suiteId` — preenchido automaticamente ao criar suite\n- `stepId` — preenchido automaticamente ao criar step\n- `runId` — preenchido automaticamente ao iniciar run",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "suiteId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stepId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "runId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Infra",
+      "description": "Endpoints de observabilidade: liveness e readiness da API.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Verifica se o serviço está no ar (liveness). Não depende do banco de dados."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/health",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["health"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"ok\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Readiness Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ready",
+              "host": ["{{baseUrl}}"],
+              "path": ["ready"]
+            },
+            "description": "Verifica se o serviço está pronto para receber tráfego (readiness). Faz uma query leve no banco de dados."
+          },
+          "response": [
+            {
+              "name": "200 Ready",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/ready",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["ready"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n    \"status\": \"ready\"\n}"
+            },
+            {
+              "name": "503 Not Ready",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/ready",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["ready"]
+                }
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n    \"error\": \"database not ready\",\n    \"timestamp\": \"2026-05-14T10:00:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Suites",
+      "description": "Gerenciamento de test suites. Uma suite agrupa uma sequência de steps que serão executados em ordem.",
+      "item": [
+        {
+          "name": "Create Suite",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set('suiteId', data.id);",
+                  "    console.log('suiteId salvo:', data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"User API Test Suite\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/suites",
+              "host": ["{{baseUrl}}"],
+              "path": ["suites"]
+            },
+            "description": "Cria uma nova suite. O `id` retornado é salvo automaticamente na variável `suiteId`."
+          },
+          "response": [
+            {
+              "name": "201 Suite Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"User API Test Suite\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/suites",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["suites"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n    \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"name\": \"User API Test Suite\"\n}"
+            },
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"name\": \"\"\n}" },
+                "url": {
+                  "raw": "{{baseUrl}}/suites",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["suites"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n    \"error\": \"name is required\",\n    \"timestamp\": \"2026-05-14T10:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Suites",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/suites",
+              "host": ["{{baseUrl}}"],
+              "path": ["suites"]
+            },
+            "description": "Retorna todas as suites ordenadas por nome."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/suites",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["suites"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "[\n    {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"name\": \"Product API Test\"\n    },\n    {\n        \"id\": \"660e8400-e29b-41d4-a716-446655440001\",\n        \"name\": \"User API Test\"\n    }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Get Suite by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/suites/{{suiteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["suites", "{{suiteId}}"]
+            },
+            "description": "Busca uma suite pelo ID."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/suites/550e8400-e29b-41d4-a716-446655440000",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["suites", "550e8400-e29b-41d4-a716-446655440000"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n    \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"name\": \"User API Test Suite\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/suites/invalid-id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["suites", "invalid-id"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n    \"error\": \"sql: no rows in result set\",\n    \"timestamp\": \"2026-05-14T10:00:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Steps",
+      "description": "Gerenciamento de steps dentro de uma suite. Cada step define um request HTTP a ser executado em sequência.",
+      "item": [
+        {
+          "name": "Create Step",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    pm.collectionVariables.set('stepId', data.id);",
+                  "    console.log('stepId salvo:', data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"position\": 1,\n  \"method\": \"GET\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{\\\"Authorization\\\": \\\"Bearer token123\\\", \\\"Accept\\\": \\\"application/json\\\"}\",\n  \"body_text\": \"\",\n  \"extractors_json\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+              "host": ["{{baseUrl}}"],
+              "path": ["suites", "{{suiteId}}", "steps"]
+            },
+            "description": "Adiciona um step à suite. O `id` retornado é salvo automaticamente na variável `stepId`."
+          },
+          "response": [
+            {
+              "name": "201 Step Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"position\": 1,\n  \"method\": \"GET\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{}\",\n  \"body_text\": \"\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["suites", "{{suiteId}}", "steps"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n    \"id\": \"770e8400-e29b-41d4-a716-446655440002\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"position\": 1,\n    \"method\": \"GET\",\n    \"path\": \"/api/users\",\n    \"headers_json\": \"{}\",\n    \"body_text\": \"\"\n}"
+            },
+            {
+              "name": "400 Bad Request (invalid method)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"position\": 1,\n  \"method\": \"INVALID\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{}\",\n  \"body_text\": \"\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["suites", "{{suiteId}}", "steps"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n    \"error\": \"method: invalid HTTP method\",\n    \"timestamp\": \"2026-05-14T10:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Steps by Suite",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+              "host": ["{{baseUrl}}"],
+              "path": ["suites", "{{suiteId}}", "steps"]
+            },
+            "description": "Lista todos os steps de uma suite ordenados por `position`."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/suites/{{suiteId}}/steps",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["suites", "{{suiteId}}", "steps"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "[\n    {\n        \"id\": \"770e8400-e29b-41d4-a716-446655440002\",\n        \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"position\": 1,\n        \"method\": \"GET\",\n        \"path\": \"/api/users\",\n        \"headers_json\": \"{}\",\n        \"body_text\": \"\"\n    },\n    {\n        \"id\": \"880e8400-e29b-41d4-a716-446655440003\",\n        \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"position\": 2,\n        \"method\": \"POST\",\n        \"path\": \"/api/products\",\n        \"headers_json\": \"{\\\"Content-Type\\\": \\\"application/json\\\"}\",\n        \"body_text\": \"{\\\"name\\\": \\\"Widget\\\"}\"\n    }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Update Step",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"position\": 2,\n  \"method\": \"POST\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{\\\"Content-Type\\\": \\\"application/json\\\"}\",\n  \"body_text\": \"{\\\"name\\\": \\\"Jane Doe\\\"}\",\n  \"extractors_json\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/steps/{{stepId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["steps", "{{stepId}}"]
+            },
+            "description": "Atualiza os campos de um step existente."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"position\": 2,\n  \"method\": \"POST\",\n  \"path\": \"/api/users\",\n  \"headers_json\": \"{}\",\n  \"body_text\": \"\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/steps/{{stepId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["steps", "{{stepId}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n    \"id\": \"770e8400-e29b-41d4-a716-446655440002\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"position\": 2,\n    \"method\": \"POST\",\n    \"path\": \"/api/users\",\n    \"headers_json\": \"{}\",\n    \"body_text\": \"\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Step",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/steps/{{stepId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["steps", "{{stepId}}"]
+            },
+            "description": "Remove um step pelo ID. Retorna 204 sem body."
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/steps/{{stepId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["steps", "{{stepId}}"]
+                }
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "cookie": [],
+              "body": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Runs",
+      "description": "Execução de runs. Suporta dois modos:\n- **Dual**: executa todos os steps contra base_a e base_b simultaneamente e compara\n- **Single**: executa steps (BEFORE), aguarda o usuário chamar /continue, executa novamente (AFTER) e compara",
+      "item": [
+        {
+          "name": "Dual Mode",
+          "description": "Executa steps em dois endpoints diferentes (A vs B) e gera diffs.",
+          "item": [
+            {
+              "name": "Start Dual Run",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const data = pm.response.json();",
+                      "    pm.collectionVariables.set('runId', data.id);",
+                      "    console.log('runId salvo:', data.id);",
+                      "    console.log('Status:', data.status);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"suite_id\": \"{{suiteId}}\",\n  \"base_a\": \"https://api-old.example.com\",\n  \"base_b\": \"https://api-new.example.com\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/runs/dual",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["runs", "dual"]
+                },
+                "description": "Inicia um run dual. Executa todos os steps contra base_a e base_b, gera diffs e retorna status=COMPLETED. O `runId` é salvo automaticamente."
+              },
+              "response": [
+                {
+                  "name": "201 Dual Run Completed",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"base_a\": \"https://api-old.example.com\",\n  \"base_b\": \"https://api-new.example.com\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/dual",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "dual"]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "{\n    \"id\": \"990e8400-e29b-41d4-a716-446655440004\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"mode\": \"DUAL\",\n    \"status\": \"COMPLETED\",\n    \"base_a\": \"https://api-old.example.com\",\n    \"base_b\": \"https://api-new.example.com\",\n    \"created_at\": \"2026-05-14T10:30:00Z\"\n}"
+                },
+                {
+                  "name": "400 Bad Request",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"suite_id\": \"\",\n  \"base_a\": \"not-a-url\",\n  \"base_b\": \"\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/dual",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "dual"]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "{\n    \"error\": \"suite_id: required field is empty\",\n    \"timestamp\": \"2026-05-14T10:30:00Z\"\n}"
+                },
+                {
+                  "name": "404 Suite Not Found",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"suite_id\": \"00000000-0000-0000-0000-000000000000\",\n  \"base_a\": \"https://api-old.example.com\",\n  \"base_b\": \"https://api-new.example.com\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/dual",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "dual"]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "{\n    \"error\": \"suite not found\",\n    \"timestamp\": \"2026-05-14T10:30:00Z\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Single Mode",
+          "description": "Executa steps em um único endpoint, salva snapshots BEFORE, aguarda o /continue e compara com snapshots AFTER.",
+          "item": [
+            {
+              "name": "Start Single Run (Before)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const data = pm.response.json();",
+                      "    pm.collectionVariables.set('runId', data.id);",
+                      "    console.log('runId salvo:', data.id);",
+                      "    console.log('Status:', data.status, '— chame Continue Single Run para prosseguir');",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"suite_id\": \"{{suiteId}}\",\n  \"base\": \"https://api.example.com\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/runs/single/start",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["runs", "single", "start"]
+                },
+                "description": "Inicia a fase BEFORE do run single. Executa todos os steps e salva snapshots. Retorna status=WAITING_USER. O `runId` é salvo automaticamente."
+              },
+              "response": [
+                {
+                  "name": "201 Single Run Started (WAITING_USER)",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [{ "key": "Content-Type", "value": "application/json" }],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"base\": \"https://api.example.com\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/single/start",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "single", "start"]
+                    }
+                  },
+                  "status": "Created",
+                  "code": 201,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "{\n    \"id\": \"aa0e8400-e29b-41d4-a716-446655440005\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"mode\": \"SINGLE\",\n    \"status\": \"WAITING_USER\",\n    \"base_single\": \"https://api.example.com\",\n    \"created_at\": \"2026-05-14T10:30:00Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Continue Single Run (After)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const data = pm.response.json();",
+                      "    console.log('Status:', data.status);",
+                      "    if (data.status === 'COMPLETED') {",
+                      "        console.log('Run concluído! Consulte os diffs em GET /runs/' + data.id + '/diffs');",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/runs/{{runId}}/continue",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["runs", "{{runId}}", "continue"]
+                },
+                "description": "Dispara a fase AFTER do run single. Só funciona quando o run está em status=WAITING_USER. Executa os steps novamente, compara com snapshots BEFORE e retorna status=COMPLETED."
+              },
+              "response": [
+                {
+                  "name": "200 Run Completed",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/{{runId}}/continue",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "{{runId}}", "continue"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "{\n    \"id\": \"aa0e8400-e29b-41d4-a716-446655440005\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"mode\": \"SINGLE\",\n    \"status\": \"COMPLETED\",\n    \"base_single\": \"https://api.example.com\",\n    \"created_at\": \"2026-05-14T10:30:00Z\"\n}"
+                },
+                {
+                  "name": "400 Run Not in WAITING_USER",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/{{runId}}/continue",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "{{runId}}", "continue"]
+                    }
+                  },
+                  "status": "Bad Request",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "{\n    \"error\": \"run is not in WAITING_USER state\",\n    \"timestamp\": \"2026-05-14T10:30:00Z\"\n}"
+                },
+                {
+                  "name": "404 Run Not Found",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/invalid-id/continue",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "invalid-id", "continue"]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "{\n    \"error\": \"run not found\",\n    \"timestamp\": \"2026-05-14T10:30:00Z\"\n}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Monitor & Results",
+          "description": "Consulta de status e resultados de runs.",
+          "item": [
+            {
+              "name": "Get Run Status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/runs/{{runId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["runs", "{{runId}}"]
+                },
+                "description": "Retorna os dados atuais de um run, incluindo mode, status e bases utilizadas."
+              },
+              "response": [
+                {
+                  "name": "200 Run (COMPLETED - Dual)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/990e8400-e29b-41d4-a716-446655440004",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "990e8400-e29b-41d4-a716-446655440004"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "{\n    \"id\": \"990e8400-e29b-41d4-a716-446655440004\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"mode\": \"DUAL\",\n    \"status\": \"COMPLETED\",\n    \"base_a\": \"https://api-old.example.com\",\n    \"base_b\": \"https://api-new.example.com\",\n    \"created_at\": \"2026-05-14T10:30:00Z\"\n}"
+                },
+                {
+                  "name": "200 Run (WAITING_USER - Single)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/aa0e8400-e29b-41d4-a716-446655440005",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "aa0e8400-e29b-41d4-a716-446655440005"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "{\n    \"id\": \"aa0e8400-e29b-41d4-a716-446655440005\",\n    \"suite_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"mode\": \"SINGLE\",\n    \"status\": \"WAITING_USER\",\n    \"base_single\": \"https://api.example.com\",\n    \"created_at\": \"2026-05-14T10:30:00Z\"\n}"
+                },
+                {
+                  "name": "404 Not Found",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/invalid-id",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "invalid-id"]
+                    }
+                  },
+                  "status": "Not Found",
+                  "code": 404,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "{\n    \"error\": \"sql: no rows in result set\",\n    \"timestamp\": \"2026-05-14T10:30:00Z\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Get Run Diffs",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/runs/{{runId}}/diffs",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["runs", "{{runId}}", "diffs"]
+                },
+                "description": "Retorna todos os diffs gerados pelo run. Cada diff corresponde a um step e inclui:\n- `passed` — se houve diferença\n- `diff_json` — array de changes com `path`, `before`, `after`\n- `summary` — resumo textual\n- `delta_latency_ms` — diferença de latência em ms (B-A ou AFTER-BEFORE)\n- `delta_bytes` — diferença de bytes na resposta"
+              },
+              "response": [
+                {
+                  "name": "200 Diffs (sem diferenças)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/{{runId}}/diffs",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "{{runId}}", "diffs"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "[\n    {\n        \"id\": \"bb0e8400-e29b-41d4-a716-446655440006\",\n        \"run_id\": \"990e8400-e29b-41d4-a716-446655440004\",\n        \"step_id\": \"770e8400-e29b-41d4-a716-446655440002\",\n        \"passed\": true,\n        \"diff_json\": \"[]\",\n        \"summary\": \"no changes\",\n        \"delta_latency_ms\": -5,\n        \"delta_bytes\": 0\n    }\n]"
+                },
+                {
+                  "name": "200 Diffs (com diferenças)",
+                  "originalRequest": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/runs/{{runId}}/diffs",
+                      "host": ["{{baseUrl}}"],
+                      "path": ["runs", "{{runId}}", "diffs"]
+                    }
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [{ "key": "Content-Type", "value": "application/json" }],
+                  "cookie": [],
+                  "body": "[\n    {\n        \"id\": \"cc0e8400-e29b-41d4-a716-446655440007\",\n        \"run_id\": \"990e8400-e29b-41d4-a716-446655440004\",\n        \"step_id\": \"770e8400-e29b-41d4-a716-446655440002\",\n        \"passed\": false,\n        \"diff_json\": \"[{\\\"path\\\":\\\"$.price\\\",\\\"before\\\":100,\\\"after\\\":120},{\\\"path\\\":\\\"$.stock\\\",\\\"before\\\":50,\\\"after\\\":45}]\",\n        \"summary\": \"2 change(s)\",\n        \"delta_latency_ms\": 45,\n        \"delta_bytes\": 12\n    }\n]"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

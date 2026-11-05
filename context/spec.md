@@ -4,6 +4,10 @@
 
 API em Golang para executar uma sequência de requests HTTP e comparar respostas para detectar regressões.
 
+### Status da implementação (2026-11-05)
+
+O MVP está implementado e `go test ./...` passa. A collection Postman unificada está em `../shadow_api_collection.json`. O smoke test Docker/Postgres e o fluxo mínimo passaram em 2026-11-05. Limitações conhecidas: status HTTP ainda não participa do diff; `extractors_json` é armazenado/validado, mas não executado.
+
 ### Modos de execução
 
 **Dual**
@@ -97,15 +101,27 @@ Regras:
 - passed
 - diff_json
 - summary
+- delta_latency_ms (B - A ou AFTER - BEFORE)
+- delta_bytes (B - A ou AFTER - BEFORE)
 
 ---
 
 ## 4. Endpoints
 
+### Infra
+- `GET /health` - liveness
+- `GET /ready` - readiness com consulta ao banco
+
 ### Suite
 - `POST /suites`
 - `GET /suites`
 - `GET /suites/{id}`
+
+### Steps
+- `POST /suites/{id}/steps`
+- `GET /suites/{id}/steps`
+- `PUT /steps/{id}`
+- `DELETE /steps/{id}`
 
 ### Run
 
@@ -162,8 +178,10 @@ Exemplo:
 ### Texto
 - Comparação direta de string
 
-### Binário
-- Comparação por hash SHA256
+### Corpos não JSON e hash
+- Corpos não JSON são comparados como texto literal.
+- SHA256 é persistido em cada snapshot; o hash não é usado atualmente como uma estratégia de comparação binária separada.
+- `status_code` é salvo no snapshot, mas ainda não participa do diff.
 
 ---
 
@@ -175,7 +193,7 @@ Por snapshot:
 - status_code
 
 Comparação:
-- delta_latency
+- delta_latency_ms
 - delta_bytes
 
 Sem thresholds automáticos no MVP.
@@ -190,46 +208,15 @@ Sem thresholds automáticos no MVP.
 
 ---
 
-## 8. TODO-list (MVP)
+## 8. Status do MVP
 
-### Estrutura base
-- Criar estrutura do projeto Go
-- Loader de configuração YAML
-- Interface de repositório
-- Implementação SQLite
-- Implementação Postgres
-- Migrações
+As fases de estrutura, persistência SQLite/Postgres, migrações, API de suites/steps, runner, modos DUAL/SINGLE, diffs, OpenAPI/Swagger, Docker e collection Postman estão implementadas. Testes automatizados passam com `go test ./...`.
 
-### Suite
-- CRUD básico de suites
-- CRUD de steps
-- Ordenação por position
-
-### Runner
-- Executor sequencial de steps
-- Cliente HTTP com timeout
-- Captura de latency e bytes
-- Persistência de snapshots
-
-### Modos
-- Execução Dual
-- Execução Single (before)
-- Endpoint continue (after)
-
-### Diff
-- Comparador JSON simples
-- Comparador texto
-- Comparador binário
-- Persistência de diffs
-
-### API
-- Endpoints de run
-- Consulta de status
-- Listagem de diffs
-
-### Infra
-- Dockerfile
-- docker-compose (api + postgres opcional)
+Pendências para fechar o contrato funcional:
+- Comparar `status_code` junto com o body.
+- Implementar execução de extractors entre steps.
+- Responder 404 em `PUT`/`DELETE /steps/{id}` para step inexistente e validar a suite em `/suites/{id}/steps`.
+- Criar migration com as constraints de domínio para bancos que aplicaram a versão antiga de `001_init.sql`.
 
 ---
 
@@ -237,7 +224,7 @@ Sem thresholds automáticos no MVP.
 
 - Paralelismo controlado
 - Variáveis entre steps
-- Extractors JSONPath
+- Extractors JSONPath (ainda não executados pelo runner)
 - Thresholds de métricas
 - Exportação de runs
 - UI de visualização
