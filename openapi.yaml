@@ -7,6 +7,8 @@ info:
     **Modos de execução:**
     - **Dual:** Executa requests em endpoint A e endpoint B, compara A vs B
     - **Single:** Executa requests, salva snapshot (before), aguarda comando continue, executa novamente (after) e compara
+    
+    **Erros:** todas as respostas de erro usam o schema `Error`. Rota desconhecida responde `404`; método não suportado em uma rota existente responde `405` com o header `Allow`.
   version: 1.0.0
   contact:
     name: Shadow API
@@ -95,6 +97,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
     get:
       tags:
         - Suites
@@ -140,6 +146,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /suites/{id}/steps:
     post:
@@ -172,6 +180,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
     get:
       tags:
         - Steps
@@ -192,6 +204,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Step'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /steps/{id}:
     put:
@@ -224,6 +238,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       tags:
         - Steps
@@ -292,6 +310,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /runs/single/start:
     post:
@@ -335,6 +357,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /runs/{id}/continue:
     post:
@@ -368,6 +394,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /runs/{id}:
     get:
@@ -394,6 +424,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /runs/{id}/diffs:
     get:
@@ -417,6 +449,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Diff'
+        '404':
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           description: Internal server error
           content:
@@ -425,6 +463,20 @@ paths:
                 $ref: '#/components/schemas/Error'
 
 components:
+  responses:
+    UnsupportedMediaType:
+      description: Request has a body but Content-Type is not application/json
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
   schemas:
     Suite:
       type: object
@@ -544,6 +596,34 @@ components:
         delta_bytes:
           type: integer
           description: Response size difference in bytes (B minus A, or AFTER minus BEFORE)
+        before:
+          allOf:
+            - $ref: '#/components/schemas/ComparedResponse'
+          nullable: true
+          description: Full response used as the left side (A in DUAL, BEFORE in SINGLE)
+        after:
+          allOf:
+            - $ref: '#/components/schemas/ComparedResponse'
+          nullable: true
+          description: Full response used as the right side (B in DUAL, AFTER in SINGLE)
+
+    ComparedResponse:
+      type: object
+      properties:
+        variant:
+          type: string
+          enum: [A, B, BEFORE, AFTER]
+        status_code:
+          type: integer
+        latency_ms:
+          type: integer
+        bytes:
+          type: integer
+        body_hash:
+          type: string
+          description: SHA256 of the stored body
+        body:
+          description: Full stored body (truncated to max_body_bytes). Returned as JSON when the body is valid JSON, otherwise as a string.
 
     Error:
       type: object

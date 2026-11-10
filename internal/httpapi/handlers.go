@@ -35,13 +35,16 @@ func New(repo repository.Repository, cfg *config.Config) http.Handler {
 	mux.HandleFunc("/runs/single/start", h.handleRunSingleStart)
 	mux.HandleFunc("/runs/", h.handleRuns)
 	mux.Handle("/docs/", serveSwagger())
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		writeError(w, http.StatusNotFound, errors.New("not found"))
+	})
 
-	return contentTypeMiddleware(mux)
+	return corsMiddleware(contentTypeMiddleware(mux))
 }
 
 func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w, http.MethodGet)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -49,7 +52,7 @@ func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleReady(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w, http.MethodGet)
 		return
 	}
 
@@ -69,7 +72,7 @@ func (h *Handler) handleSuites(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		h.createSuite(w, r)
 	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w, http.MethodGet, http.MethodPost)
 	}
 }
 
@@ -83,7 +86,7 @@ func (h *Handler) handleSuitesByID(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(path, "/steps") {
 		suiteID := strings.TrimSuffix(path, "/steps")
 		if suiteID == "" {
-			w.WriteHeader(http.StatusNotFound)
+			writeError(w, http.StatusNotFound, errors.New("not found"))
 			return
 		}
 		switch r.Method {
@@ -92,7 +95,7 @@ func (h *Handler) handleSuitesByID(w http.ResponseWriter, r *http.Request) {
 		case http.MethodPost:
 			h.createStep(w, r, suiteID)
 		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			writeMethodNotAllowed(w, http.MethodGet, http.MethodPost)
 		}
 		return
 	}
@@ -106,7 +109,7 @@ func (h *Handler) handleSuitesByID(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		h.getSuite(w, r, path)
 	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w, http.MethodGet)
 	}
 }
 
@@ -123,13 +126,13 @@ func (h *Handler) handleStepsByID(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		h.deleteStep(w, r, id)
 	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w, http.MethodPut, http.MethodDelete)
 	}
 }
 
 func (h *Handler) handleRunDual(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w, http.MethodPost)
 		return
 	}
 
@@ -190,12 +193,13 @@ func (h *Handler) handleRunDual(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.repo.UpdateRunStatus(r.Context(), run.ID, "COMPLETED")
+	run.Status = "COMPLETED"
 	writeJSON(w, http.StatusCreated, run)
 }
 
 func (h *Handler) handleRunSingleStart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w, http.MethodPost)
 		return
 	}
 
@@ -249,6 +253,7 @@ func (h *Handler) handleRunSingleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.repo.UpdateRunStatus(r.Context(), run.ID, "WAITING_USER")
+	run.Status = "WAITING_USER"
 	writeJSON(w, http.StatusCreated, run)
 }
 
@@ -262,7 +267,7 @@ func (h *Handler) handleRuns(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(path, "/continue") {
 		runID := strings.TrimSuffix(path, "/continue")
 		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			writeMethodNotAllowed(w, http.MethodPost)
 			return
 		}
 		h.continueRun(w, r, runID)
@@ -272,7 +277,7 @@ func (h *Handler) handleRuns(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(path, "/diffs") {
 		runID := strings.TrimSuffix(path, "/diffs")
 		if r.Method != http.MethodGet {
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			writeMethodNotAllowed(w, http.MethodGet)
 			return
 		}
 		h.listDiffs(w, r, runID)
@@ -285,7 +290,7 @@ func (h *Handler) handleRuns(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w, http.MethodGet)
 		return
 	}
 	h.getRun(w, r, path)
@@ -295,7 +300,7 @@ func (h *Handler) getRun(w http.ResponseWriter, r *http.Request, id string) {
 	run, err := h.repo.GetRun(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			writeError(w, http.StatusNotFound, err)
+			writeError(w, http.StatusNotFound, errors.New("run not found"))
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err)
@@ -304,13 +309,81 @@ func (h *Handler) getRun(w http.ResponseWriter, r *http.Request, id string) {
 	writeJSON(w, http.StatusOK, run)
 }
 
+// snapshotView exposes a compared response. Body is returned as raw JSON when
+// the stored body is valid JSON, otherwise as a plain string.
+type snapshotView struct {
+	Variant    string `json:"variant"`
+	StatusCode int    `json:"status_code"`
+	LatencyMs  int64  `json:"latency_ms"`
+	Bytes      int64  `json:"bytes"`
+	BodyHash   string `json:"body_hash"`
+	Body       any    `json:"body"`
+}
+
+type diffView struct {
+	model.Diff
+	Before *snapshotView `json:"before"`
+	After  *snapshotView `json:"after"`
+}
+
 func (h *Handler) listDiffs(w http.ResponseWriter, r *http.Request, runID string) {
+	run, err := h.repo.GetRun(r.Context(), runID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, errors.New("run not found"))
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
 	diffs, err := h.repo.ListDiffsByRun(r.Context(), runID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, diffs)
+	snaps, err := h.repo.ListSnapshotsByRun(r.Context(), runID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	// Latest snapshot per step+variant (snapshots are ordered by created_at).
+	latest := make(map[string]model.Snapshot, len(snaps))
+	for _, s := range snaps {
+		latest[s.StepID+"|"+s.Variant] = s
+	}
+	beforeVariant, afterVariant := "A", "B"
+	if run.Mode == "SINGLE" {
+		beforeVariant, afterVariant = "BEFORE", "AFTER"
+	}
+
+	views := make([]diffView, 0, len(diffs))
+	for _, d := range diffs {
+		v := diffView{Diff: d}
+		if s, ok := latest[d.StepID+"|"+beforeVariant]; ok {
+			v.Before = newSnapshotView(s)
+		}
+		if s, ok := latest[d.StepID+"|"+afterVariant]; ok {
+			v.After = newSnapshotView(s)
+		}
+		views = append(views, v)
+	}
+	writeJSON(w, http.StatusOK, views)
+}
+
+func newSnapshotView(s model.Snapshot) *snapshotView {
+	var body any = s.Body
+	if json.Valid([]byte(s.Body)) {
+		body = json.RawMessage(s.Body)
+	}
+	return &snapshotView{
+		Variant:    s.Variant,
+		StatusCode: s.StatusCode,
+		LatencyMs:  s.LatencyMs,
+		Bytes:      s.Bytes,
+		BodyHash:   s.BodyHash,
+		Body:       body,
+	}
 }
 
 func (h *Handler) continueRun(w http.ResponseWriter, r *http.Request, runID string) {
@@ -338,6 +411,7 @@ func (h *Handler) continueRun(w http.ResponseWriter, r *http.Request, runID stri
 		return
 	}
 	_ = h.repo.UpdateRunStatus(r.Context(), run.ID, "COMPLETED")
+	run.Status = "COMPLETED"
 	writeJSON(w, http.StatusOK, run)
 }
 
@@ -376,7 +450,7 @@ func (h *Handler) getSuite(w http.ResponseWriter, r *http.Request, id string) {
 	suite, err := h.repo.GetSuite(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			writeError(w, http.StatusNotFound, err)
+			writeError(w, http.StatusNotFound, errors.New("suite not found"))
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err)
@@ -521,4 +595,9 @@ func writeError(w http.ResponseWriter, status int, err error) {
 		"error":     err.Error(),
 		"timestamp": time.Now().UTC(),
 	})
+}
+
+func writeMethodNotAllowed(w http.ResponseWriter, allowed ...string) {
+	w.Header().Set("Allow", strings.Join(allowed, ", "))
+	writeError(w, http.StatusMethodNotAllowed, errors.New("method not allowed"))
 }
